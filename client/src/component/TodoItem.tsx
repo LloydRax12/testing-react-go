@@ -1,9 +1,35 @@
-import { Badge, Box, Flex, Text } from "@chakra-ui/react";
+import { Badge, Box, Flex, Spinner, Text } from "@chakra-ui/react";
 import { FaCheckCircle } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { Todo } from "./TodoList";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { BASE_URL } from "../App";
 
 const TodoItem = ({ todo }: { todo: Todo }) => {
+  const queryClient = useQueryClient();
+
+  const { mutate: updateTodo, isPending: isUpdating } = useMutation({
+    mutationKey: ["updateTodo"],
+    mutationFn: async () => {
+      if (todo.completed) return alert("Todo is already completed");
+      try {
+        const rest = await fetch(BASE_URL + `/todos/${todo._id}`, {
+          method: "Patch",
+        });
+        const data = await rest.json();
+        if (!rest.ok) {
+          throw new Error(data.error || "Something went wrong");
+        }
+
+        return data;
+      } catch (error) {
+        console.log(error);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
   return (
     <Flex gap={2} alignItems={"center"}>
       <Flex
@@ -33,8 +59,9 @@ const TodoItem = ({ todo }: { todo: Todo }) => {
         )}
       </Flex>
       <Flex gap={2} alignItems={"center"}>
-        <Box color={"green.500"} cursor={"pointer"}>
-          <FaCheckCircle size={20} />
+        <Box color={"green.500"} cursor={"pointer"} onClick={() => updateTodo}>
+          {!isUpdating && <FaCheckCircle size={20} />}
+          {isUpdating && <Spinner size={"sm"} />}
         </Box>
         <Box color={"red.500"} cursor={"pointer"}>
           <MdDelete size={25} />
